@@ -24,4 +24,7 @@ GET   /phonebook/list        @controllers.PhoneBookController.list()
 
 # Products
 
-GET   /products/list         @controllers.ProductController.list()
+POST    /product               @controllers.ProductController.create()
+PUT     /product               @controllers.ProductController.update()
+DELETE  /product/:id           @controllers.ProductController.delete(id: String)
+GET     /products              @controllers.ProductController.list(filter: Option[models.ProductFilter])

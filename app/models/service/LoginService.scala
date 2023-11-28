@@ -1,4 +1,4 @@
-package models
+package models.service
 
 trait LoginService {
   def checkEmail(email: String): Boolean

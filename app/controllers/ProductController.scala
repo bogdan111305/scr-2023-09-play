@@ -2,18 +2,34 @@ package controllers
 
 import com.google.inject.Inject
 import controllers.actions.authAction
-import models.LoginService
+import models.ProductFilter
 import models.dto.ProductDTO
-import play.api.mvc.{Action, Controller}
+import models.service.{LoginService, ProductService}
+import play.api.libs.json.Json
+import play.api.mvc.{Action, AnyContent, Controller}
 
-class ProductController @Inject()(loginService: LoginService) extends Controller{
+class ProductController @Inject()(loginService: LoginService,
+                                  productService: ProductService) extends Controller{
 
-  def list() = authAction(loginService){ ur =>
-    Ok(views.html.products.list(List(
-      ProductDTO("1", "foo1", "bar1"),
-      ProductDTO("2", "foo2", "bar2"),
-      ProductDTO("3", "foo3", "bar3"),
-      ProductDTO("4", "foo4", "bar4")
-    )))
+  def list(filter: Option[ProductFilter]): Action[AnyContent] = Action {
+    Ok(Json.toJson(productService.list(filter)))
+  }
+
+  def create(): Action[ProductDTO] = Action(parse.json[ProductDTO]) { implicit rc =>
+    Ok(Json.toJson(productService.create(rc.body)))
+  }
+
+  def update(): Action[ProductDTO] = Action(parse.json[ProductDTO]) { implicit rc =>
+    productService.update(rc.body) match {
+      case Some(p) => Ok(Json.toJson(p))
+      case _ => NotFound
+    }
+  }
+
+  def delete(id: String): Action[AnyContent] = Action {
+    productService.delete(id) match {
+      case Some(id) => Ok(Json.toJson(id))
+      case _ => NotFound
+    }
   }
 }
