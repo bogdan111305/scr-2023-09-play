@@ -1,24 +1,31 @@
 package models.dao.repositories
 
-import models.ProductItem
+import models.dao.entities.ProductItem
+import models.dao.schema.PhoneBookSchema
+
 import scala.collection.mutable
 
 trait ProductItemRepository {
-  def listById(ids: Seq[String]): Seq[ProductItem]
+  def listByProductId(ids: String): Seq[ProductItem]
   def save(p: Seq[ProductItem]): Seq[ProductItem]
-  def delete(id: String): Unit
+  def deleteByProductId(id: String): Unit
 }
 class ProductItemRepositoryImpl extends ProductItemRepository {
 
-  private val products = mutable.HashMap.empty[String, ProductItem]
+  import org.squeryl.PrimitiveTypeMode._
 
-  override def listById(ids: Seq[String]): Seq[ProductItem] = {
-    ids.flatten(id => products.get(id))
+  override def listByProductId(id: String): Seq[ProductItem] = transaction {
+    from(PhoneBookSchema.productItem)(pi =>
+      where(pi.productId === id)
+        select pi
+    ).toList
   }
 
-  override def save(p: Seq[ProductItem]): Seq[ProductItem] = {
-    p.flatten(i => products.put(i.id, i))
+  override def save(p: Seq[ProductItem]): Seq[ProductItem] = transaction {
+    p.map(PhoneBookSchema.productItem.insert)
   }
 
-  override def delete(id: String): Unit = products.-=(id)
+  override def deleteByProductId(id: String): Unit = transaction {
+    PhoneBookSchema.productItem.deleteWhere(_.productId === id)
+  }
 }

@@ -1,5 +1,6 @@
 package models
 
+import models.dao.entities.Product
 import play.api.mvc.QueryStringBindable
 
 case class ProductFilter(title: String) {
