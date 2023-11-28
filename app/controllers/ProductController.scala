@@ -1,15 +1,14 @@
 package controllers
 
 import com.google.inject.Inject
-import controllers.actions.authAction
 import models.ProductFilter
 import models.dto.ProductDTO
-import models.service.{LoginService, ProductService}
+import models.dto.ProductDTO.productDTOFormat
+import models.service.ProductService
 import play.api.libs.json.Json
 import play.api.mvc.{Action, AnyContent, Controller}
 
-class ProductController @Inject()(loginService: LoginService,
-                                  productService: ProductService) extends Controller{
+class ProductController @Inject()(productService: ProductService) extends Controller{
 
   def list(filter: Option[ProductFilter]): Action[AnyContent] = Action {
     Ok(Json.toJson(productService.list(filter)))
@@ -20,16 +19,14 @@ class ProductController @Inject()(loginService: LoginService,
   }
 
   def update(): Action[ProductDTO] = Action(parse.json[ProductDTO]) { implicit rc =>
-    productService.update(rc.body) match {
-      case Some(p) => Ok(Json.toJson(p))
-      case _ => NotFound
-    }
+    productService.update(rc.body)
+      .map(p => Ok(Json.toJson(p)))
+      .getOrElse(NotFound)
   }
 
   def delete(id: String): Action[AnyContent] = Action {
-    productService.delete(id) match {
-      case Some(id) => Ok(Json.toJson(id))
-      case _ => NotFound
-    }
+    productService.delete(id)
+      .map(id => Ok(Json.toJson(id)))
+      .getOrElse(NotFound)
   }
 }

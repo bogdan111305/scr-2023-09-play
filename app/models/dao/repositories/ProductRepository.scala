@@ -1,26 +1,56 @@
 package models.dao.repositories
 
-import models.Product
+import com.google.inject.Inject
+import models.dao.entities.Product.toDto
+import models.dao.entities.{Product, ProductItem}
+import models.dao.schema.PhoneBookSchema
+import models.dto.ProductDTO
+
 import scala.collection.mutable
 
 trait ProductRepository {
-  def add(p: Product): Product
-  def delete(id: String): Unit
   def getById(id: String): Option[Product]
-  def getAll: Seq[Product]
-  def getByFilter(filter: Product => Boolean): Seq[Product]
+  def getAll: Seq[ProductDTO]
+  def getByFilter(filter: Product => Boolean): Seq[ProductDTO]
+  def add(p: Product,  items: Seq[ProductItem]): (Product, Seq[ProductItem])
+  def update(p: Product,  items: Seq[ProductItem]): (Product, Seq[ProductItem])
+  def delete(id: String): Unit
+
 }
-class ProductRepositoryImpl extends ProductRepository {
+class ProductRepositoryImpl @Inject()(productItemRepository: ProductItemRepository) extends ProductRepository {
 
-  private val products = mutable.HashMap.empty[String, Product]
+  import org.squeryl.PrimitiveTypeMode._
 
-  override def add(p: Product): Product = products.put(p.id, p).get
+  override def getById(id: String): Option[Product] = transaction {
+    from(PhoneBookSchema.product)(p =>
+      where(p.id === id)
+      select(p)
+    ).headOption
+  }
 
-  override def delete(id: String): Unit = products -= id
+  override def getAll: Seq[ProductDTO] = transaction {
+    from(PhoneBookSchema.product)(p => select(p))
+      .toSeq.map(p => toDto(p, productItemRepository.listByProductId(p.id)))
+  }
 
-  override def getById(id: String): Option[Product] = products.get(id)
+  override def getByFilter(filter: Product => Boolean): Seq[ProductDTO] = transaction {
+    from(PhoneBookSchema.product)(p => where(filter(p) === true) select (p))
+      .toSeq.map(p => toDto(p, productItemRepository.listByProductId(p.id)))
+  }
 
-  override def getAll: Seq[Product] = products.values.toList
+  override def add(p: Product, items: Seq[ProductItem]): (Product, Seq[ProductItem]) = transaction {
+    val newProduct = PhoneBookSchema.product.insert(p)
+    val productItems = items.map(i => i.copy(productId = newProduct.id)).map(PhoneBookSchema.productItem.insert)
+    (newProduct, productItems)
+  }
 
-  override def getByFilter(filter: Product => Boolean): Seq[Product] = products.values.toList.filter(filter)
+  override def update(p: Product, items: Seq[ProductItem]): (Product, Seq[ProductItem]) = transaction {
+    delete(p.id)
+    add(p, items)
+  }
+
+  override def delete(id: String): Unit = transaction {
+    PhoneBookSchema.product.delete(id)
+    PhoneBookSchema.productItem.deleteWhere(_.productId === id)
+  }
 }
